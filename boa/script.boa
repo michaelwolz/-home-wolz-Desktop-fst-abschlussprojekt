@@ -1,0 +1,72 @@
+p: Project = input;
+Tests: output sum[string] of int;
+Repositories: output sum[string] of int;
+
+cur_time: string;
+inheritsFromTestCase := false;
+importsTestCase := false;
+startYear: time;
+endYear: time;
+testCasePresent := false;
+
+getQuarterOfYear := function(month: int) : int {
+	# Since there is no integer division available, need to use a dirty way!
+	# return (month + 2) / 3;
+	if (month == 1 || month == 2 || month == 3) 
+		return 1;
+	else if (month == 4 || month == 5 || month == 6)
+		return 2;
+	else if (month == 7 || month == 8 || month == 9) 
+		return 3;
+	return 4;
+};
+
+visit(input, visitor {
+	before node: CodeRepository -> {
+		if (len(node.revisions) > 0) {
+			startYear = addmonth(trunctoyear(node.revisions[0].commit_date), 3); # Add three month to startYear, so that the first snapshot is of March of the startYear
+			endYear = addmonth(node.revisions[len(node.revisions) - 1].commit_date, 3); # Add three month so that last Revision is definetly processed
+
+			for (; startYear < endYear;) {
+				cur_time = ""+string(yearof(startYear))+"/Q"+string(getQuarterOfYear(monthof(startYear)));
+				snapshot := getsnapshot(node, startYear);
+				foreach (i: int; def(snapshot[i])) {
+					visit(snapshot[i]);
+					inheritsFromTestCase = false; # I am not sure if variables get reset before every call of visit, so make sure this is reset to false 
+					importsTestCase = false; # Like inheritsFromTestCase
+				}
+				if (testCasePresent) {
+					Repositories[cur_time] << 1;
+					testCasePresent = false;
+				}
+				startYear = addmonth(startYear, 3); # Should be in declaration of for-loop, but Syntax differs between datasets? WTH?
+			}
+		}
+		stop;
+	}
+    before node: ASTRoot -> {    	
+    	for (j := 0; j < len(node.imports); j++) {
+    		if (node.imports[j] == "junit.framework.TestCase" || node.imports[j] == "test.framework.TestCase")
+				importsTestCase = true;
+    	}   			
+    }
+    before node: Declaration -> {
+    	for (i := 0; i < len(node.parents); i++) {
+    		if (node.parents[i].name == "TestCase")
+    			inheritsFromTestCase = true;
+    	}
+    }
+	before node: Method -> {
+ 		if (match(`^(test).+$`, node.name) && importsTestCase && inheritsFromTestCase) {
+ 			Tests[cur_time] << 1;
+			testCasePresent = true;
+			stop; # Make sure method isn't counte dtwice because of annotation
+ 		}
+	} 
+    before node: Modifier -> {
+ 		if (node.kind == ModifierKind.ANNOTATION && match(`^(org\.junit\.)?Test$`, node.annotation_name)) {
+ 			Tests[cur_time] << 1; 		
+ 			testCasePresent = true;
+ 		}
+	}
+ });
