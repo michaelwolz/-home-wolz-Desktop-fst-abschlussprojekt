@@ -1,10 +1,13 @@
 p: Project = input;
-Annotations: output sum[string][string] of int;
-Repositories: output sum[string] of int;
+Annotations: output sum[string][int][int] of int;
+Repositories: output sum[int][int] of int;
+AnnotationRepoCount: output sum[string] of int;
 
-cur_time: string;
+cur_year: int;
+cur_quarter: int;
 startYear: time;
 endYear: time;
+annotationsInRepo: map[string] of bool;
 
 isAnnotaded := false;
 
@@ -27,25 +30,32 @@ visit(input, visitor {
 			endYear = addmonth(node.revisions[len(node.revisions) - 1].commit_date, 3); 	# Add three month so that last Revision is definetly processed
 
 			for (; startYear < endYear;) {
-				cur_time = ""+string(yearof(startYear))+"/Q"+string(getQuarterOfYear(monthof(startYear)));
+				cur_year = yearof(startYear);
+				cur_quarter = getQuarterOfYear(monthof(startYear));
 				snapshot := getsnapshot(node, startYear);
 				foreach (i: int; def(snapshot[i])) {
 					visit(snapshot[i]);
 				}
 				startYear = addmonth(startYear, 3);
+				if (isAnnotaded) {
+					Repositories[cur_year][cur_quarter] << 1;
+					isAnnotaded = false;
+				}	
 			}
 
-			if (isAnnotaded) {
-				Repositories[cur_time] << 1;
-				isAnnotaded = false;
-			}	
+			tmp := keys(annotationsInRepo);
+			for (j := 0; j < len(tmp); j++) {
+				AnnotationRepoCount[tmp[j]] << 1;
+			}
+			clear(annotationsInRepo); 														# Clear Map
 		}
 		stop;
 	}
     before node: Modifier -> {
  		if (node.kind == ModifierKind.ANNOTATION) {
  			isAnnotaded = true;
- 			Annotations[node.annotation_name][cur_time] << 1;
+ 			annotationsInRepo[node.annotation_name] = true;
+ 			Annotations[node.annotation_name][cur_year][cur_quarter] << 1;
  		}
 	}
  });
