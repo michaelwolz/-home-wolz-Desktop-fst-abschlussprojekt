@@ -1,8 +1,20 @@
 \documentclass[11pt,a4paper,pageskip=full]{scrartcl}
 \usepackage[utf8]{inputenc}
 \usepackage[ngerman]{babel}
+\usepackage[babel, german=quotes]{csquotes}
+\usepackage[
+style=numeric-comp,
+backend=biber,
+bibencoding=utf8,
+bibwarn=true,
+doi=false,
+url=false,
+sorting=none
+]{biblatex}
+\addbibresource{bibliography.bib}
+
 \author{Michael Wolz}
-\title{Titel}
+\title{Popularität von Java-Annotationen im zeitlichen Verlauf\\\Large{Fortgeschrittene Softwaretechnik}\\ \large{Wintersemester 2017/2018}}
 
 \begin{document}
 
@@ -15,10 +27,21 @@
 
 \section{Reflexion}
 
-\section{Einleitung}
+Die in der Vorlesung behandelte zeitliche Analyse der Entwicklung von JUnit-Testmetho\-den mithilfe von BOA weckte bereits großes Interesse bei mir. Gerade die Entwicklung von verschiedenen Veränderungen an Quellcodes über die Zeit finde ich sehr interessant und somit bot es sich an, dass ich mich im Rahmen des Abschlussprojektes für das Modul \textit{Fortgeschrittene Softwaretechnik} mit der Popularität von Java-Annotationen im zeitlichen Verlauf beschäftige. Hierbei werden zunächst die relativen Häufigkeiten von Java-Annotationen betrachtet und anschließend die meist verwendeten Annotationen im zeitlichen Verlauf analysiert. Die für die Analyse herangezogenen Daten stammen dabei aus dem GitHub September 2015 Datensatz von BOA, welcher insgesamt 380125 Repositories beinhaltet \cite{boadatasetstats}. Die Daten werden im Anschluss mit R verarbeitet und ausgewertet.
 
-\section{Ergebnis}
+\section{Datenbeschaffung mit BOA}
+
+Im Ordner \texttt{boa} befindet sich das Skript, welches zur Datenbeschaffung auf dem BOA-Datensatz verwendet wurde. Für jedes Repository wird die erste (\texttt{startYear}), sowie die letzte Revision (\texttt{endYear}) als zeitliche Referenz verwendet. Zwischen diesen beiden Werten werden im Anschluss quartalsweise Snapshots betrachtet und die verwendeten Annotationen in einem mehrdimensionalem Array mit dem Aufbau \texttt{Annotation : Jahr : Quartal : Count} gespeichert. Zusätzlich wird gezählt, wie viele Repositories eine bestimmte Annoation beinhalten, sodass beispielsweise firmen- oder projektinterne Annoationen in der späteren Analyse nicht mit einbezogen werden müssen. Des Weiteren werden noch die insgesamt betrachteten Revisionen pro Quartal gezählt, wobei eine Revision nur gezählt wird, falls sie Annotationen beinhaltet.  
+
+\section{Datenauswertung}
+
+Betrachteter Zeitraum: 2005/Q2 - 2015/Q2
+
+
+
 
 \section{Fazit}
+
+\printbibliography
 
 \end{document}
