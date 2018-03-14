@@ -24,3 +24,7 @@
 *.out
 *.synctex.gz
 .Rproj.user
+*.bak
+*.sav
+*.bcf
+*.run.xml
