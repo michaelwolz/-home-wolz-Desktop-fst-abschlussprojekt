@@ -1,0 +1,61 @@
+p: Project = input;
+Annotations: output sum[string][int][int] of int;
+Repositories: output sum[int][int] of int;
+AnnotationRepoCount: output sum[string] of int;
+
+cur_year: int;
+cur_quarter: int;
+startYear: time;
+endYear: time;
+annotationsInRepo: map[string] of bool;
+
+isAnnotaded := false;
+
+endYear = time("Fri Jan 1 00:00:00 PDT 2016");
+
+getQuarterOfYear := function(month: int) : int {
+	# return (month + 2) / 3;
+	# Since there is no integer division available, we need to use a dirty way!
+	if (month == 1 || month == 2 || month == 3) 
+		return 1;
+	else if (month == 4 || month == 5 || month == 6)
+		return 2;
+	else if (month == 7 || month == 8 || month == 9) 
+		return 3;
+	return 4;
+};
+
+visit(input, visitor {
+	before node: CodeRepository -> {
+		if (len(node.revisions) > 0) {
+			startYear = addmonth(trunctoyear(node.revisions[0].commit_date), 3); 			# Add three month to startYear, so that the first snapshot is of March of the startYear
+			for (; startYear < endYear;) {
+				cur_year = yearof(startYear);
+				cur_quarter = getQuarterOfYear(monthof(startYear));
+				snapshot := getsnapshot(node, startYear);
+				foreach (i: int; def(snapshot[i])) {
+					visit(snapshot[i]);
+				}
+				startYear = addmonth(startYear, 3);
+				if (isAnnotaded) {
+					Repositories[cur_year][cur_quarter] << 1;
+					isAnnotaded = false;
+				}	
+			}
+
+			tmp := keys(annotationsInRepo);
+			for (j := 0; j < len(tmp); j++) {
+				AnnotationRepoCount[tmp[j]] << 1;
+			}
+			clear(annotationsInRepo); 														# Clear Map
+		}
+		stop;
+	}
+    before node: Modifier -> {
+ 		if (node.kind == ModifierKind.ANNOTATION) {
+ 			isAnnotaded = true;
+ 			annotationsInRepo[node.annotation_name] = true;
+ 			Annotations[node.annotation_name][cur_year][cur_quarter] << 1;
+ 		}
+	}
+ });
