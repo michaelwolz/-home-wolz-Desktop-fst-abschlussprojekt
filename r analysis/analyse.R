@@ -23,63 +23,79 @@ repository_creation = read.csv("repository-created-github-september-2015.csv")  
 barplot(repository_creation$count, main = "Repository creation date", 
         xlab = "Year/Quarter", ylab = "Amount of repositories created", names.arg = paste(substr(repository_creation$year, 3, 4), repository_creation$quarter, sep="/"))
 
+barplot(revisions$count, main = "Revisions", 
+        xlab = "Year/Quarter", ylab = "Amount of revisions", names.arg = paste(substr(revisions$year, 3, 4), revisions$quarter, sep="/"))
 
 ##################################
 #           CLEAN DATA           #
 ##################################
 
-# My suggested timeframe is 2005/1?
-# Also remove all data where annotation count is smaller than 500 ???
-filtered_annotations = subset(annotations, year > 2005 & count > 499)
+# Remove all annotations before 2007
+filtered_annotations = subset(annotations, year > 2007)
 
-# Remove all annotations which are used in less than ? repositories
-annotation_use = subset(annotation_use, count > 3)
-#filtered_annotations = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations as a INNER JOIN annotation_use as au ON a.annotation = au.annotation")
-
-# Unique annotations
-#print(nrow(subset(filtered_annotations,!duplicated(filtered_annotations$annotation)))) # 454
+# Remove all annotations which are used in less than 2 repositories
+annotation_use = subset(annotation_use, count > 1)
+filtered_annotations = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations as a INNER JOIN annotation_use as au ON a.annotation = au.annotation")
 
 
 ##################################
 #          ANALYZE DATA          #
 ##################################
 
-# Get Top 15 annotations by use
-top15_by_use_tmp = aggregate(list(max_count=filtered_annotations$count), by=list(annotation=filtered_annotations$annotation), max)
-top15_by_use = tail(top15_by_use_tmp[order(top15_by_use_tmp$max_count),], 15)
+# Get Top 10 annotations by use
+top10_by_use_tmp = aggregate(list(max_count=filtered_annotations$count), by=list(annotation=filtered_annotations$annotation), max)
+top10_by_use = tail(top10_by_use_tmp[order(top10_by_use_tmp$max_count),], 10)
 
-p = sum(top15_by_use_tmp$max_count)
+p = sum(top10_by_use_tmp$max_count)
 
 par(mai=c(1,2,1,1))
-bp = barplot(top15_by_use$max_count / p * 100, main="Top 15 most used annotations", horiz=TRUE, names.arg=top15_by_use$annotation, las=1, xlim=c(0,56))
-text((top15_by_use$max_count / p * 100), bp, paste(round((top15_by_use$max_count / p * 100), 2), "%"), pos=4, cex=0.8)
+bp = barplot(top10_by_use$max_count / p * 100, main="Top 10 most used annotations", horiz=TRUE, names.arg=top10_by_use$annotation, las=1, xlim=c(0,56))
+text((top10_by_use$max_count / p * 100), bp, paste(round((top10_by_use$max_count / p * 100), 2), "%"), pos=4, cex=0.8)
 
-# Get Top 15 annotations by projects
-top15 = tail(annotation_use[order(annotation_use$count),], 15)
+# Get Top 10 annotations by projects
+top10 = tail(annotation_use[order(annotation_use$count),], 10)
 sum_annotation_use = sum(annotation_use$count)
 par(mai=c(1,2,1,1))
-bp = barplot(top15$count / sum_annotation_use * 100, main="Top 15 most annotations in projects", horiz=TRUE, names.arg=top15$annotation, las=1, xlim=c(0,20))
-text((top15$count / sum_annotation_use * 100), bp, paste(round((top15$count / sum_annotation_use * 100), 2), "%"), pos=4, cex=0.8)
+bp = barplot(top10$count / sum_annotation_use * 100, main="Top 10 most annotations in projects", horiz=TRUE, names.arg=top10$annotation, las=1, xlim=c(0,20))
+text((top10$count / sum_annotation_use * 100), bp, paste(round((top10$count / sum_annotation_use * 100), 2), "%"), pos=4, cex=0.8)
 
-# Look at Top 15 annotations in context of time
-top15_annotations_time = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations as a INNER JOIN top15 as t ON a.annotation = t.annotation")
+# Look at Top 10 annotations over time
+top10_annotations_time = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations as a INNER JOIN top10 as t ON a.annotation = t.annotation")
 
-annotation_plot = ggplot(top15_annotations_time, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=count, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 15 annotations over time") + labs(color="Annotation")  
+annotation_plot = ggplot(top10_annotations_time, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=count, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("# Annotation") + ggtitle("Top 10 annotations over time") + labs(color="Annotation")  
 plot(annotation_plot)
 
-top15_merge_revisions = merge(top15_annotations_time, annotation_use, by=c("annotation"), suffixes=c("Annotations", "Revision"))
-top15_merge_revisions$relativeUse = with(top15_merge_revisions, countAnnotations / countRevision * 100)
-annotation_plot3 = ggplot(top15_merge_revisions, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=relativeUse, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 15 annotations over time") + labs(color="Annotation")  
+top10_merge_revisions = merge(top10_annotations_time, annotation_use, by=c("annotation"), suffixes=c("Annotations", "Revision"))
+top10_merge_revisions$relativeUse = with(top10_merge_revisions, countAnnotations / countRevision * 100)
+annotation_plot3 = ggplot(top10_merge_revisions, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=relativeUse, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 10 annotations over time relative to the amount of revisions") + labs(color="Annotation")  
 plot(annotation_plot3)
 
-max_values = aggregate(list(max_count=top15_annotations_time$count), by=list(annotation=top15_annotations_time$annotation), max)
-top15_merged = merge(top15_annotations_time, max_values, by=c("annotation"))
-top15_merged$relativeUse = with(top15_merged, count / max_count * 100)
-annotation_plot4 = ggplot(top15_merged, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=relativeUse, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 15 annotations over time") + labs(color="Annotation")  
+max_values = aggregate(list(max_count=top10_annotations_time$count), by=list(annotation=top10_annotations_time$annotation), max)
+top10_merged = merge(top10_annotations_time, max_values, by=c("annotation"))
+top10_merged$relativeUse = with(top10_merged, count / max_count * 100)
+annotation_plot4 = ggplot(top10_merged, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=relativeUse, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 10 annotations over time") + labs(color="Annotation")  
 plot(annotation_plot4)
 
 # Plot only deprecated 
 deprecated = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations as a WHERE a.annotation = 'Deprecated'")
 max_dep = max(deprecated$count)
-dep_plot = ggplot(deprecated, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=count / max_dep * 100, group=annotation,colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 15 annotations over time") + labs(color="Annotation")  
+dep_plot = ggplot(deprecated, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=count / max_dep * 100, group=annotation,colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 10 annotations over time") + labs(color="Annotation")  
 plot(dep_plot)
+
+
+##################################
+#       ANALYZE NEW DATA         #
+##################################
+
+annotations2 = read.csv("result-github-september-2015-modified.csv")                      # read annotation file 
+
+##################################
+#           CLEAN DATA           #
+##################################
+
+# Remove all annotations before 2007
+filtered_annotations2 = subset(annotations2, year > 2007)
+
+# Remove all annotations which are used in less than 2 repositories
+filtered_annotations2 = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations2 as a INNER JOIN annotation_use as au ON a.annotation = au.annotation")
+
