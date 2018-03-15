@@ -99,3 +99,14 @@ filtered_annotations2 = subset(annotations2, year > 2007)
 # Remove all annotations which are used in less than 2 repositories
 filtered_annotations2 = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations2 as a INNER JOIN annotation_use as au ON a.annotation = au.annotation")
 
+# Look at Top 10 annotations over time
+top10_annotations_time2 = sqldf("SELECT a.annotation, a.year, a.quarter, a.count FROM filtered_annotations2 as a INNER JOIN top10 as t ON a.annotation = t.annotation")
+
+annotation_plot5 = ggplot(top10_annotations_time2, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=count, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("# Annotation") + ggtitle("Top 10 annotations over time") + labs(color="Annotation")  
+plot(annotation_plot5)
+
+top10_merge_revisions2 = merge(top10_annotations_time2, annotation_use, by=c("annotation"), suffixes=c("Annotations", "Revision"))
+top10_merge_revisions2$relativeUse = with(top10_merge_revisions2, countAnnotations / countRevision * 100)
+annotation_plot6 = ggplot(top10_merge_revisions2, aes(x=paste(substr(year, 3,4), quarter, sep="/"), y=relativeUse, group=annotation, colour=annotation)) + geom_line() + geom_point() + xlab("Year/Quarter") + ylab("% Annotation") + ggtitle("Top 10 annotations over time relative to the amount of revisions") + labs(color="Annotation")  
+plot(annotation_plot6)
+
